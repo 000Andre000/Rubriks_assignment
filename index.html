@@ -165,7 +165,7 @@
   <ul class="nav-links">
     <a href="index.html"><li><button>Inverse Scramble</button></li></a>
      <a href="./2.html"><li><button>Beginner's Method</button></li></a>
-     <a href="./3.html"><li><button >Kociemba (demo)</button></li></a>
+     <a href="./3.html"><li><button>LBL Solver</button></li></a>
   </ul>
 </nav>
 
@@ -175,8 +175,7 @@
     <button id="scrambleBtn">🔀 Scramble</button>
     <button id="solveBtn">✅ Solve</button>
     <button id="resetBtn">♻ Reset</button>
-    <input id="manualMove" placeholder="Manual move (e.g. R, U', F2)"/>
-    <button id="applyMove">➕ Apply Move</button>
+   
   </div>
 
  
@@ -192,45 +191,11 @@
   </div>
 
 <script>
-// COLORS: r,g,b,y,o,w (red, green, blue, yellow, orange, white)
-// We model faces as: U, R, F, D, L, B (standard Singmaster ordering)
-
-// Update solve button handler
-document.getElementById('solveBtn').addEventListener('click', async ()=>{
-  if(currentMode === "inverse"){
-    // your current inverse scramble solver
-    if(scrambleMoves.length===0){
-      if(cube.isSolved()){ refreshUI('Already solved'); return; }
-      alert('No scramble history. This demo only auto-solves cubes scrambled here.');
-      return;
-    }
-    const steps=[];
-    for(let i=scrambleMoves.length-1;i>=0;i--){
-      let mv=scrambleMoves[i];
-      let inv = mv.endsWith("2") ? mv : mv.endsWith("'") ? mv[0] : mv+"'";
-      steps.push(inv);
-    }
-    for(let i=0;i<steps.length;i++){
-      cube.applyMove(steps[i]);
-      refreshUI(`Solving step ${i+1}: ${steps[i]}`);
-      await new Promise(res=>setTimeout(res,120));
-    }
-    refreshUI("Solved by inverse scramble");
-  }
-
-  if(currentMode === "beginner"){
-    alert("Beginner's method solver not yet implemented.\n(Here you would code white cross → F2L → OLL → PLL)");
-  }
-
-  if(currentMode === "kociemba"){
-    alert("Kociemba solver requires an external library. Placeholder here.");
-  }
-});
 
 class Cube {
   constructor() {
     // Each face is 9-element array of a color character
-    // Start solved
+    
     this.faces = {
       U: Array(9).fill('w'),
       R: Array(9).fill('r'),
@@ -247,7 +212,7 @@ class Cube {
     return c;
   }
 
-  // Return single string of 54 chars in ordering U R F D L B each 9
+  // Return single string of 54 
   toColorString() {
     return ['U','R','F','D','L','B'].map(k => this.faces[k].join('')).join('');
   }
@@ -266,11 +231,11 @@ class Cube {
     return a;
   }
 
-  // Apply basic move. supports: U U' U2, R, R', R2, F, F' F2, D, D', D2, L, L', L2, B, B', B2
+  // Apply basic moves like:- U U' U2, R, R', R2, F, F' F2, D, D', D2, L, L', L2, B, B', B2
   applyMove(move){
     const m = move.trim();
     if(!m) return;
-    // parse
+ 
     let base = m[0];
     let suffix = m.slice(1);
     let times = 1;
@@ -285,8 +250,7 @@ class Cube {
   _applyBasic(face){
     // rotate face itself
     this.faces[face] = Cube.rotateFaceArray(this.faces[face],1);
-    // adjust the adjacent faces' stickers for each basic face
-    // We'll implement according to standard mapping
+    // adjust the adjacent faces for each basic face
     const f = this.faces;
     let tmp;
     switch(face){
@@ -344,7 +308,7 @@ class Cube {
   }
 }
 
-// Utility: random scramble generator (list of moves)
+// Utility: random scramble generator
 function generateScramble(length=20){
   const faces = ['U','R','F','D','L','B'];
   const suffixes = ['',"'","2"];
@@ -360,7 +324,7 @@ function generateScramble(length=20){
   return moves;
 }
 
-// Simple renderer: returns an SVG string of unfolded net given color string of length 54: U R F D L B
+// Simple renderer: returns an SVG string
 function getCubeSvg(colorString, size=50){
   // colorMap
   const map = {r:'#c62828',g:'#2e7d32',b:'#1565c0',y:'#fdd835',o:'#ef6c00',w:'#fafafa'};
@@ -376,8 +340,8 @@ function getCubeSvg(colorString, size=50){
 
   // positions in net (col,row) for each face
   const pos = {U:[1,0],L:[0,1],F:[1,1],R:[2,1],B:[3,1],D:[1,2]};
-  const pad=4; const s=size; const outW = (4*s+pad*6); const outH=(3*s+pad*5);
-  let svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${outW}' height='${outH}'>`;
+  const pad=5; const s=size; const outW = (4*s+pad*6); const outH=(3*s+pad*5);
+  let svg = `<svg xmlns='http://www.w3.org/2000/svg' width=500 height=340>`;
   // background
   svg += `<rect width='100%' height='100%' fill='white'/>`;
   for(const faceKey of ['U','L','F','R','B','D']){
@@ -388,9 +352,9 @@ function getCubeSvg(colorString, size=50){
     for(let i=0;i<9;i++){
       const rx = i%3; const ry = Math.floor(i/3);
       const col = map[faceStr[i]] || '#999';
-      const x = ox + rx*(s/3);
-      const y = oy + ry*(s/3);
-      svg += `<rect x='${x}' y='${y}' width='${s/3-2}' height='${s/3-2}' rx='3' ry='3' fill='${col}' stroke='#222' stroke-width='0.8'/>`;
+      const x = ox + rx*(s/3)+100;
+      const y = oy + ry*(s/3)+50;
+      svg += `<rect x='${x}' y='${y}'  width='${s/3-2}' height='${s/3-2}' rx='3' ry='3' fill='${col}' stroke='#222' stroke-width='0.8' />`;
     }
   }
   svg += `</svg>`;
@@ -428,23 +392,17 @@ document.getElementById('resetBtn').addEventListener('click',()=>{
   refreshUI('Reset to solved');
 });
 
-document.getElementById('applyMove').addEventListener('click',()=>{
-  const v = document.getElementById('manualMove').value.trim();
-  if(!v) return;
-  cube.applyMove(v);
-  // if user manually moves, we cannot guarantee solver will solve it — warn
-  refreshUI('Applied manual move: '+v);
-});
+
 
 document.getElementById('solveBtn').addEventListener('click',async ()=>{
   if(scrambleMoves.length===0){
-    // if there is no scramble history but cube is already solved, say so
+   
     if(cube.isSolved()) { refreshUI('Already solved'); return; }
-    // Otherwise we cannot reliably solve arbitrary cube with this demo
+   
     alert('No scramble history available. This demo only auto-solves cubes generated here (it uses the inverse of the scramble). For arbitrary cube input, integrate a full solver (two-phase/Kociemba).');
     return;
   }
-  // Apply inverse of scramble
+  
   const steps = [];
   for(let i=scrambleMoves.length-1;i>=0;i--){
     const mv = scrambleMoves[i];
@@ -455,7 +413,7 @@ document.getElementById('solveBtn').addEventListener('click',async ()=>{
     steps.push(inv);
   }
 
-  // display each step and update UI; we will animate with small delay
+ 
   const logLines = [];
   for(let i=0;i<steps.length;i++){
     cube.applyMove(steps[i]);
@@ -469,7 +427,7 @@ document.getElementById('solveBtn').addEventListener('click',async ()=>{
   alert('Cube solved by applying inverse of scramble. Moves applied:\n'+steps.join(' '));
 });
 
-// init
+
 refreshUI('Initial');
 
 </script>
