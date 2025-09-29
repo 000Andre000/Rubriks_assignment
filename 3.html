@@ -5,20 +5,35 @@
 <meta charset="UTF-8">
 <title>Rubik's Cube LBL Solver</title>
 <style>
-:root {
-  --bg: #f9f9fb;
-  --fg: #222;
-  --accent: #0077ff;
-  --border: #ccc;
-}
-body { 
-  font-family: "Segoe UI", sans-serif; 
-  text-align: center; 
-  background: var(--bg); 
-  color: var(--fg);
-  margin: 0;
-  padding: 20px;
-}
+ :root {
+      --bg: #fdfdfd;
+      --fg: #222;
+      --card: #fff;
+      --border: #e0e0e0;
+      --accent: #4cafef;
+      --accent-dark: #1e88e5;
+      --font: system-ui, Segoe UI, Roboto, Arial;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #121212;
+        --fg: #f0f0f0;
+        --card: #1d1d1d;
+        --border: #333;
+        --accent: #64b5f6;
+        --accent-dark: #2196f3;
+      }
+    }
+ body {
+      background: var(--bg);
+      color: var(--fg);
+      font-family: var(--font);
+      margin: 0;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
 h1 {
   margin-bottom: 10px;
 }
