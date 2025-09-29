@@ -1,0 +1,478 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Rubik's Cube Solver</title>
+  <style>
+    :root {
+      --bg: #fdfdfd;
+      --fg: #222;
+      --card: #fff;
+      --border: #e0e0e0;
+      --accent: #4cafef;
+      --accent-dark: #1e88e5;
+      --font: system-ui, Segoe UI, Roboto, Arial;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #121212;
+        --fg: #f0f0f0;
+        --card: #1d1d1d;
+        --border: #333;
+        --accent: #64b5f6;
+        --accent-dark: #2196f3;
+      }
+    }
+    body {
+      background: var(--bg);
+      color: var(--fg);
+      font-family: var(--font);
+      margin: 0;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    h2 {
+      margin-bottom: 12px;
+      text-align: center;
+    }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+      margin-bottom: 16px;
+    }
+    button {
+      padding: 8px 14px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--fg);
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s ease;
+    }
+    button:hover {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent-dark);
+    }
+    #statusBar {
+      margin-bottom: 16px;
+      font-weight: 500;
+      padding: 6px 12px;
+      border-radius: 6px;
+      background: var(--card);
+      border: 1px solid var(--border);
+    }
+    .main {
+      display: grid;
+      grid-template-columns: 500px 1fr;
+      gap: 20px;
+      align-items: start;
+      max-width: 1100px;
+      width: 100%;
+    }
+    #svgWrap {
+      width: 500px;
+      height: 340px;
+      border-radius: 12px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      padding: 12px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    }
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 16px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+    pre {
+      background: #000;
+      color: #0f0;
+      font-family: monospace;
+      font-size: 13px;
+      padding: 8px;
+      border-radius: 6px;
+      overflow: auto;
+      max-height: 180px;
+    }
+    input {
+      padding: 6px 8px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 14px;
+      background: var(--card);
+      color: var(--fg);
+    }
+    .navbar {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+.nav-brand {
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.nav-links {
+  list-style: none;
+  display: flex;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+}
+
+.nav-btn {
+  border: none;
+  background: none;
+  font-size: 14px;
+  padding: 6px 10px;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: 0.2s;
+  color: var(--fg);
+}
+
+.nav-btn:hover {
+  background: var(--accent);
+  color: white;
+}
+
+.nav-btn.active {
+  background: var(--accent-dark);
+  color: white;
+}
+
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+  <div class="nav-brand">🧩 Rubik's Solver</div>
+  <ul class="nav-links">
+    <a href="index.html"><li><button>Inverse Scramble</button></li></a>
+     <a href="./2.html"><li><button>Beginner's Method</button></li></a>
+     <a href="./3.html"><li><button >Kociemba (demo)</button></li></a>
+  </ul>
+</nav>
+
+  <h2>🧩 Rubik's Cube — Scramble & Solve</h2>
+
+  <div class="controls">
+    <button id="scrambleBtn">🔀 Scramble</button>
+    <button id="solveBtn">✅ Solve</button>
+    <button id="resetBtn">♻ Reset</button>
+    <input id="manualMove" placeholder="Manual move (e.g. R, U', F2)"/>
+    <button id="applyMove">➕ Apply Move</button>
+  </div>
+
+ 
+
+  <div class="main">
+    <div id="svgWrap"></div>
+    <div class="panel">
+      <h4>Moves Log</h4>
+      <pre id="movesLog"></pre>
+      <h4>Cube String</h4>
+      <pre id="cubeStr"></pre>
+    </div>
+  </div>
+
+<script>
+// COLORS: r,g,b,y,o,w (red, green, blue, yellow, orange, white)
+// We model faces as: U, R, F, D, L, B (standard Singmaster ordering)
+
+// Update solve button handler
+document.getElementById('solveBtn').addEventListener('click', async ()=>{
+  if(currentMode === "inverse"){
+    // your current inverse scramble solver
+    if(scrambleMoves.length===0){
+      if(cube.isSolved()){ refreshUI('Already solved'); return; }
+      alert('No scramble history. This demo only auto-solves cubes scrambled here.');
+      return;
+    }
+    const steps=[];
+    for(let i=scrambleMoves.length-1;i>=0;i--){
+      let mv=scrambleMoves[i];
+      let inv = mv.endsWith("2") ? mv : mv.endsWith("'") ? mv[0] : mv+"'";
+      steps.push(inv);
+    }
+    for(let i=0;i<steps.length;i++){
+      cube.applyMove(steps[i]);
+      refreshUI(`Solving step ${i+1}: ${steps[i]}`);
+      await new Promise(res=>setTimeout(res,120));
+    }
+    refreshUI("Solved by inverse scramble");
+  }
+
+  if(currentMode === "beginner"){
+    alert("Beginner's method solver not yet implemented.\n(Here you would code white cross → F2L → OLL → PLL)");
+  }
+
+  if(currentMode === "kociemba"){
+    alert("Kociemba solver requires an external library. Placeholder here.");
+  }
+});
+
+class Cube {
+  constructor() {
+    // Each face is 9-element array of a color character
+    // Start solved
+    this.faces = {
+      U: Array(9).fill('w'),
+      R: Array(9).fill('r'),
+      F: Array(9).fill('g'),
+      D: Array(9).fill('y'),
+      L: Array(9).fill('o'),
+      B: Array(9).fill('b')
+    };
+  }
+
+  clone() {
+    const c = new Cube();
+    for (const k of Object.keys(this.faces)) c.faces[k] = this.faces[k].slice();
+    return c;
+  }
+
+  // Return single string of 54 chars in ordering U R F D L B each 9
+  toColorString() {
+    return ['U','R','F','D','L','B'].map(k => this.faces[k].join('')).join('');
+  }
+
+  isSolved(){
+    return Object.values(this.faces).every(f=> new Set(f).size===1);
+  }
+
+  // rotate face array clockwise (times=1 means 90deg cw)
+  static rotateFaceArray(arr, times=1){
+    const t = ((times%4)+4)%4;
+    let a = arr.slice();
+    for(let k=0;k<t;k++){
+      a = [a[6],a[3],a[0],a[7],a[4],a[1],a[8],a[5],a[2]];
+    }
+    return a;
+  }
+
+  // Apply basic move. supports: U U' U2, R, R', R2, F, F' F2, D, D', D2, L, L', L2, B, B', B2
+  applyMove(move){
+    const m = move.trim();
+    if(!m) return;
+    // parse
+    let base = m[0];
+    let suffix = m.slice(1);
+    let times = 1;
+    if(suffix === "2") times = 2;
+    if(suffix === "'") times = 3;
+
+    for(let i=0;i<times;i++){
+      this._applyBasic(base);
+    }
+  }
+
+  _applyBasic(face){
+    // rotate face itself
+    this.faces[face] = Cube.rotateFaceArray(this.faces[face],1);
+    // adjust the adjacent faces' stickers for each basic face
+    // We'll implement according to standard mapping
+    const f = this.faces;
+    let tmp;
+    switch(face){
+      case 'U':
+        // U: cycle top rows of (B,R,F,L)
+        tmp = [f.B[0],f.B[1],f.B[2]];
+        [f.B[0],f.B[1],f.B[2]] = [f.R[0],f.R[1],f.R[2]];
+        [f.R[0],f.R[1],f.R[2]] = [f.F[0],f.F[1],f.F[2]];
+        [f.F[0],f.F[1],f.F[2]] = [f.L[0],f.L[1],f.L[2]];
+        [f.L[0],f.L[1],f.L[2]] = tmp;
+        break;
+      case 'D':
+        // D: cycle bottom rows of (F,R,B,L)
+        tmp = [f.F[6],f.F[7],f.F[8]];
+        [f.F[6],f.F[7],f.F[8]] = [f.R[6],f.R[7],f.R[8]];
+        [f.R[6],f.R[7],f.R[8]] = [f.B[6],f.B[7],f.B[8]];
+        [f.B[6],f.B[7],f.B[8]] = [f.L[6],f.L[7],f.L[8]];
+        [f.L[6],f.L[7],f.L[8]] = tmp;
+        break;
+      case 'R':
+        // R: cycle right columns of (U,F,D,B)
+        tmp = [f.U[2],f.U[5],f.U[8]];
+        [f.U[2],f.U[5],f.U[8]] = [f.F[2],f.F[5],f.F[8]];
+        [f.F[2],f.F[5],f.F[8]] = [f.D[2],f.D[5],f.D[8]];
+        [f.D[2],f.D[5],f.D[8]] = [f.B[6],f.B[3],f.B[0]]; // note B is flipped
+        [f.B[6],f.B[3],f.B[0]] = tmp;
+        break;
+      case 'L':
+        // L: cycle left columns of (U,B,D,F)
+        tmp = [f.U[0],f.U[3],f.U[6]];
+        [f.U[0],f.U[3],f.U[6]] = [f.B[8],f.B[5],f.B[2]]; // B flipped
+        [f.B[8],f.B[5],f.B[2]] = [f.D[0],f.D[3],f.D[6]];
+        [f.D[0],f.D[3],f.D[6]] = [f.F[0],f.F[3],f.F[6]];
+        [f.F[0],f.F[3],f.F[6]] = tmp;
+        break;
+      case 'F':
+        // F: cycle front adjacent stickers (U,R,D,L)
+        tmp = [f.U[6],f.U[7],f.U[8]];
+        [f.U[6],f.U[7],f.U[8]] = [f.L[8],f.L[5],f.L[2]]; // left col reversed
+        [f.L[8],f.L[5],f.L[2]] = [f.D[2],f.D[1],f.D[0]];
+        [f.D[2],f.D[1],f.D[0]] = [f.R[0],f.R[3],f.R[6]];
+        [f.R[0],f.R[3],f.R[6]] = tmp;
+        break;
+      case 'B':
+        // B: cycle back adjacent stickers (U,L,D,R)
+        tmp = [f.U[0],f.U[1],f.U[2]];
+        [f.U[0],f.U[1],f.U[2]] = [f.R[2],f.R[5],f.R[8]];
+        [f.R[2],f.R[5],f.R[8]] = [f.D[8],f.D[7],f.D[6]];
+        [f.D[8],f.D[7],f.D[6]] = [f.L[6],f.L[3],f.L[0]];
+        [f.L[6],f.L[3],f.L[0]] = tmp;
+        break;
+      default:
+        console.warn('Unknown face',face);
+    }
+  }
+}
+
+// Utility: random scramble generator (list of moves)
+function generateScramble(length=20){
+  const faces = ['U','R','F','D','L','B'];
+  const suffixes = ['',"'","2"];
+  const moves = [];
+  let prev = null;
+  for(let i=0;i<length;i++){
+    let f;
+    do { f = faces[Math.floor(Math.random()*faces.length)]; } while(f===prev);
+    prev=f;
+    const s = suffixes[Math.floor(Math.random()*suffixes.length)];
+    moves.push(f+s);
+  }
+  return moves;
+}
+
+// Simple renderer: returns an SVG string of unfolded net given color string of length 54: U R F D L B
+function getCubeSvg(colorString, size=50){
+  // colorMap
+  const map = {r:'#c62828',g:'#2e7d32',b:'#1565c0',y:'#fdd835',o:'#ef6c00',w:'#fafafa'};
+  if(!colorString || colorString.length!==54) return '<div>Invalid colors</div>';
+  const faces = {
+    U: colorString.slice(0,9),
+    R: colorString.slice(9,18),
+    F: colorString.slice(18,27),
+    D: colorString.slice(27,36),
+    L: colorString.slice(36,45),
+    B: colorString.slice(45,54)
+  };
+
+  // positions in net (col,row) for each face
+  const pos = {U:[1,0],L:[0,1],F:[1,1],R:[2,1],B:[3,1],D:[1,2]};
+  const pad=4; const s=size; const outW = (4*s+pad*6); const outH=(3*s+pad*5);
+  let svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${outW}' height='${outH}'>`;
+  // background
+  svg += `<rect width='100%' height='100%' fill='white'/>`;
+  for(const faceKey of ['U','L','F','R','B','D']){
+    const [cx,cy] = pos[faceKey];
+    const ox = pad + cx*(s+pad);
+    const oy = pad + cy*(s+pad);
+    const faceStr = faces[faceKey];
+    for(let i=0;i<9;i++){
+      const rx = i%3; const ry = Math.floor(i/3);
+      const col = map[faceStr[i]] || '#999';
+      const x = ox + rx*(s/3);
+      const y = oy + ry*(s/3);
+      svg += `<rect x='${x}' y='${y}' width='${s/3-2}' height='${s/3-2}' rx='3' ry='3' fill='${col}' stroke='#222' stroke-width='0.8'/>`;
+    }
+  }
+  svg += `</svg>`;
+  return svg;
+}
+
+// UI logic
+const cube = new Cube();
+let scrambleMoves = [];
+const svgWrap = document.getElementById('svgWrap');
+const movesLog = document.getElementById('movesLog');
+const cubeStr = document.getElementById('cubeStr');
+
+function refreshUI(note){
+  svgWrap.innerHTML = getCubeSvg(cube.toColorString(),60);
+  movesLog.textContent = (note?note+"\n":"") + 'Scramble: ' + scrambleMoves.join(' ') + (cube.isSolved()?"\n\nCube is SOLVED":"");
+  cubeStr.textContent = cube.toColorString();
+}
+
+document.getElementById('scrambleBtn').addEventListener('click',()=>{
+  // reset then scramble
+  for(const k of Object.keys(cube.faces)) cube.faces[k] = Array(9).fill(cube.faces[k][4]); // keep colors but reset will set solved?
+  // actually reset to solved proper
+  const solved = new Cube();
+  for(const k of Object.keys(solved.faces)) cube.faces[k] = solved.faces[k].slice();
+  scrambleMoves = generateScramble(20);
+  scrambleMoves.forEach(m=>cube.applyMove(m));
+  refreshUI('Scrambled with moves');
+});
+
+document.getElementById('resetBtn').addEventListener('click',()=>{
+  const solved = new Cube();
+  for(const k of Object.keys(solved.faces)) cube.faces[k] = solved.faces[k].slice();
+  scrambleMoves = [];
+  refreshUI('Reset to solved');
+});
+
+document.getElementById('applyMove').addEventListener('click',()=>{
+  const v = document.getElementById('manualMove').value.trim();
+  if(!v) return;
+  cube.applyMove(v);
+  // if user manually moves, we cannot guarantee solver will solve it — warn
+  refreshUI('Applied manual move: '+v);
+});
+
+document.getElementById('solveBtn').addEventListener('click',async ()=>{
+  if(scrambleMoves.length===0){
+    // if there is no scramble history but cube is already solved, say so
+    if(cube.isSolved()) { refreshUI('Already solved'); return; }
+    // Otherwise we cannot reliably solve arbitrary cube with this demo
+    alert('No scramble history available. This demo only auto-solves cubes generated here (it uses the inverse of the scramble). For arbitrary cube input, integrate a full solver (two-phase/Kociemba).');
+    return;
+  }
+  // Apply inverse of scramble
+  const steps = [];
+  for(let i=scrambleMoves.length-1;i>=0;i--){
+    const mv = scrambleMoves[i];
+    // invert
+    let inv = mv;
+    if(mv.endsWith("2")) inv = mv; else if(mv.endsWith("'")) inv = mv.slice(0,-1);
+    else inv = mv + "'";
+    steps.push(inv);
+  }
+
+  // display each step and update UI; we will animate with small delay
+  const logLines = [];
+  for(let i=0;i<steps.length;i++){
+    cube.applyMove(steps[i]);
+    logLines.push( (i+1)+' '+steps[i] );
+    // show intermediate
+    refreshUI('Solving step '+(i+1)+': '+steps[i]);
+    // small pause to allow UI update
+    await new Promise(res=>setTimeout(res,120));
+  }
+  refreshUI('Solved by reversing scramble');
+  alert('Cube solved by applying inverse of scramble. Moves applied:\n'+steps.join(' '));
+});
+
+// init
+refreshUI('Initial');
+
+</script>
+</body>
+</html> 
+

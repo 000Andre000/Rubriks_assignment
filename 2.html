@@ -1,0 +1,336 @@
+<!-- <!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>Rubik's Cube - Beginner’s Method</title>
+  <style>
+      :root {
+      --bg: #fdfdfd;
+      --fg: #222;
+      --card: #fff;
+      --border: #e0e0e0;
+      --accent: #4cafef;
+      --accent-dark: #1e88e5;
+      --font: system-ui, Segoe UI, Roboto, Arial;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #121212;
+        --fg: #f0f0f0;
+        --card: #1d1d1d;
+        --border: #333;
+        --accent: #64b5f6;
+        --accent-dark: #2196f3;
+      }
+    }
+    body { font-family: system-ui; margin: 20px; text-align: center; }
+    #svgWrap { margin: 20px auto; width: 500px; }
+    button { margin: 6px; padding: 8px 12px; }
+    pre { text-align: left; background: #111; color: #0f0; padding: 10px; }
+  </style>
+</head>
+<body>
+  <h2>🧩 Beginner’s Method Solver</h2>
+  <div id="svgWrap"></div>
+  <div>
+    <button onclick="scramble()">🔀 Scramble</button>
+    <button onclick="beginnerSolve()">✅ Solve (Beginner’s Method)</button>
+    <button onclick="reset()">♻ Reset</button>
+  </div>
+  <h3>Solution Steps</h3>
+  <pre id="stepsLog"></pre>
+
+  <script>
+    // --- Cube Model ---
+    class Cube {
+      constructor() {
+        this.faces = {
+          U: Array(9).fill('w'),
+          R: Array(9).fill('r'),
+          F: Array(9).fill('g'),
+          D: Array(9).fill('y'),
+          L: Array(9).fill('o'),
+          B: Array(9).fill('b')
+        };
+      }
+      clone(){ const c=new Cube(); for(const k in this.faces) c.faces[k]=this.faces[k].slice(); return c; }
+      toColorString(){ return ['U','R','F','D','L','B'].map(k=>this.faces[k].join('')).join(''); }
+      isSolved(){ return Object.values(this.faces).every(f=>new Set(f).size===1); }
+      static rotateFaceArray(arr,t=1){ let a=arr.slice(); for(let k=0;k<t;k++) a=[a[6],a[3],a[0],a[7],a[4],a[1],a[8],a[5],a[2]]; return a; }
+      applyMove(m){
+        if(!m) return; let base=m[0], suf=m.slice(1), t=1; if(suf=="2")t=2; if(suf=="'")t=3;
+        for(let i=0;i<t;i++) this._applyBasic(base);
+      }
+      _applyBasic(f){
+        const s=this.faces; s[f]=Cube.rotateFaceArray(s[f],1); let tmp;
+        switch(f){
+          case'U': tmp=[s.B[0],s.B[1],s.B[2]]; [s.B[0],s.B[1],s.B[2]]=[s.R[0],s.R[1],s.R[2]];
+                   [s.R[0],s.R[1],s.R[2]]=[s.F[0],s.F[1],s.F[2]];
+                   [s.F[0],s.F[1],s.F[2]]=[s.L[0],s.L[1],s.L[2]];
+                   [s.L[0],s.L[1],s.L[2]]=tmp; break;
+          case'D': tmp=[s.F[6],s.F[7],s.F[8]]; [s.F[6],s.F[7],s.F[8]]=[s.R[6],s.R[7],s.R[8]];
+                   [s.R[6],s.R[7],s.R[8]]=[s.B[6],s.B[7],s.B[8]];
+                   [s.B[6],s.B[7],s.B[8]]=[s.L[6],s.L[7],s.L[8]];
+                   [s.L[6],s.L[7],s.L[8]]=tmp; break;
+          case'R': tmp=[s.U[2],s.U[5],s.U[8]]; [s.U[2],s.U[5],s.U[8]]=[s.F[2],s.F[5],s.F[8]];
+                   [s.F[2],s.F[5],s.F[8]]=[s.D[2],s.D[5],s.D[8]];
+                   [s.D[2],s.D[5],s.D[8]]=[s.B[6],s.B[3],s.B[0]];
+                   [s.B[6],s.B[3],s.B[0]]=tmp; break;
+          case'L': tmp=[s.U[0],s.U[3],s.U[6]]; [s.U[0],s.U[3],s.U[6]]=[s.B[8],s.B[5],s.B[2]];
+                   [s.B[8],s.B[5],s.B[2]]=[s.D[0],s.D[3],s.D[6]];
+                   [s.D[0],s.D[3],s.D[6]]=[s.F[0],s.F[3],s.F[6]];
+                   [s.F[0],s.F[3],s.F[6]]=tmp; break;
+          case'F': tmp=[s.U[6],s.U[7],s.U[8]]; [s.U[6],s.U[7],s.U[8]]=[s.L[8],s.L[5],s.L[2]];
+                   [s.L[8],s.L[5],s.L[2]]=[s.D[2],s.D[1],s.D[0]];
+                   [s.D[2],s.D[1],s.D[0]]=[s.R[0],s.R[3],s.R[6]];
+                   [s.R[0],s.R[3],s.R[6]]=tmp; break;
+          case'B': tmp=[s.U[0],s.U[1],s.U[2]]; [s.U[0],s.U[1],s.U[2]]=[s.R[2],s.R[5],s.R[8]];
+                   [s.R[2],s.R[5],s.R[8]]=[s.D[8],s.D[7],s.D[6]];
+                   [s.D[8],s.D[7],s.D[6]]=[s.L[6],s.L[3],s.L[0]];
+                   [s.L[6],s.L[3],s.L[0]]=tmp; break;
+        }
+      }
+    }
+    function generateScramble(n=20){const f=['U','R','F','D','L','B'],s=['',"'","2"],a=[];let p=null;for(let i=0;i<n;i++){let x;do{x=f[Math.floor(Math.random()*f.length)]}while(x===p);p=x;a.push(x+s[Math.floor(Math.random()*s.length)])}return a;}
+    function getCubeSvg(cs,size=50){const m={r:'#c62828',g:'#2e7d32',b:'#1565c0',y:'#fdd835',o:'#ef6c00',w:'#fafafa'};const f={U:cs.slice(0,9),R:cs.slice(9,18),F:cs.slice(18,27),D:cs.slice(27,36),L:cs.slice(36,45),B:cs.slice(45,54)};const pos={U:[1,0],L:[0,1],F:[1,1],R:[2,1],B:[3,1],D:[1,2]};const pad=4,s=size;let svg=`<svg xmlns='http://www.w3.org/2000/svg' width='${4*s+pad*6}' height='${3*s+pad*5}'>`;svg+=`<rect width='100%' height='100%' fill='white'/>`;for(const k of ['U','L','F','R','B','D']){const[ox,oy]=pos[k].map((v,i)=>pad+v*(s+pad));const st=f[k];for(let i=0;i<9;i++){const x=ox+(i%3)*(s/3),y=oy+Math.floor(i/3)*(s/3),c=m[st[i]]||'#999';svg+=`<rect x='${x}' y='${y}' width='${s/3-2}' height='${s/3-2}' fill='${c}' stroke='#222'/>`}}return svg+`</svg>`}
+    // --- UI ---
+    const cube=new Cube();const svgWrap=document.getElementById("svgWrap");const log=document.getElementById("stepsLog");
+    function render(msg=""){svgWrap.innerHTML=getCubeSvg(cube.toColorString(),60);if(msg)log.textContent+=msg+"\n";}
+    function scramble(){const seq=generateScramble(15);seq.forEach(m=>cube.applyMove(m));log.textContent="Scramble: "+seq.join(" ")+"\n";render();}
+    function reset(){const s=new Cube();for(const k in s.faces) cube.faces[k]=s.faces[k].slice();log.textContent="Reset\n";render();}
+    async function beginnerSolve(){const phases=[{n:"White Cross",m:["F","R","U","R'","U'"]},{n:"F2L",m:["U","R","U'","R'","U'","F'","U","F"]},{n:"OLL",m:["F","R","U","R'","U'","F'"]},{n:"PLL",m:["R2","U","R","U","R'","U'","R'","U'","R'","U","R'"]}];for(const p of phases){log.textContent+="\n"+p.n+": ";for(const mv of p.m){cube.applyMove(mv);log.textContent+=mv+" ";render("Applied "+mv);await new Promise(r=>setTimeout(r,250));}log.textContent+="\n";}log.textContent+="\n Not Solved!\n";}
+    render("Ready");
+  </script>
+</body>
+</html> -->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>Rubik's Cube - Beginner’s Method</title>
+  <style>
+    :root {
+      --bg: #fdfdfd;
+      --fg: #222;
+      --card: #fff;
+      --border: #e0e0e0;
+      --accent: #4cafef;
+      --accent-dark: #1e88e5;
+      --font: system-ui, Segoe UI, Roboto, Arial;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #121212;
+        --fg: #f0f0f0;
+        --card: #1d1d1d;
+        --border: #333;
+        --accent: #64b5f6;
+        --accent-dark: #2196f3;
+      }
+    }
+
+    body {
+     background: var(--bg);
+      color: var(--fg);
+      font-family: var(--font);
+      margin: 0;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .container {
+      max-width: 800px;
+      width: 100%;
+      margin: 30px auto;
+      background: var(--card);
+      padding: 20px;
+      border-radius: 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    }
+
+    h2 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    #svgWrap {
+      display: flex;
+      justify-content: center;
+      margin: 20px auto;
+    }
+
+    .controls {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    button {
+      margin: 6px;
+      padding: 10px 16px;
+      font-size: 15px;
+      border: none;
+      border-radius: 8px;
+      background: var(--accent);
+      color: #fff;
+      cursor: pointer;
+      transition: background 0.2s ease, transform 0.1s ease;
+    }
+
+    button:hover {
+      background: var(--accent-dark);
+    }
+
+    button:active {
+      transform: scale(0.96);
+    }
+
+    pre {
+      text-align: left;
+      background: #111;
+      color: #0f0;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 14px;
+      overflow-x: auto;
+    }
+    .navbar {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+.nav-brand {
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.nav-links {
+  list-style: none;
+  display: flex;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+}
+
+.nav-btn {
+  border: none;
+  background: none;
+  font-size: 14px;
+  padding: 6px 10px;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: 0.2s;
+  color: var(--fg);
+}
+
+.nav-btn:hover {
+  background: var(--accent);
+  color: white;
+}
+
+.nav-btn.active {
+  background: var(--accent-dark);
+  color: white;
+}
+
+  </style>
+</head>
+<body>
+     <nav class="navbar">
+  <div class="nav-brand">🧩 Rubik's Solver</div>
+  <ul class="nav-links">
+    <a href="index.html"><li><button>Inverse Scramble</button></li></a>
+     <a href="./2.html"><li><button>Beginner's Method</button></li></a>
+     <a href="./3.html"><li><button >Kociemba (demo)</button></li></a>
+  </ul>
+</nav>
+  <div class="container">
+   
+    <h2>🧩 Beginner’s Method Solver</h2>
+    <div id="svgWrap"></div>
+
+    <div class="controls">
+      <button onclick="scramble()">🔀 Scramble</button>
+      <button onclick="beginnerSolve()">✅ Solve (Beginner’s Method)</button>
+      <button onclick="reset()">♻ Reset</button>
+    </div>
+
+    <h3>Solution Steps</h3>
+    <pre id="stepsLog"></pre>
+  </div>
+
+  <script>
+    // --- Cube Model ---
+    class Cube {
+      constructor() {
+        this.faces = {
+          U: Array(9).fill('w'),
+          R: Array(9).fill('r'),
+          F: Array(9).fill('g'),
+          D: Array(9).fill('y'),
+          L: Array(9).fill('o'),
+          B: Array(9).fill('b')
+        };
+      }
+      clone(){ const c=new Cube(); for(const k in this.faces) c.faces[k]=this.faces[k].slice(); return c; }
+      toColorString(){ return ['U','R','F','D','L','B'].map(k=>this.faces[k].join('')).join(''); }
+      isSolved(){ return Object.values(this.faces).every(f=>new Set(f).size===1); }
+      static rotateFaceArray(arr,t=1){ let a=arr.slice(); for(let k=0;k<t;k++) a=[a[6],a[3],a[0],a[7],a[4],a[1],a[8],a[5],a[2]]; return a; }
+      applyMove(m){
+        if(!m) return; let base=m[0], suf=m.slice(1), t=1; if(suf=="2")t=2; if(suf=="'")t=3;
+        for(let i=0;i<t;i++) this._applyBasic(base);
+      }
+      _applyBasic(f){
+        const s=this.faces; s[f]=Cube.rotateFaceArray(s[f],1); let tmp;
+        switch(f){
+          case'U': tmp=[s.B[0],s.B[1],s.B[2]]; [s.B[0],s.B[1],s.B[2]]=[s.R[0],s.R[1],s.R[2]];
+                   [s.R[0],s.R[1],s.R[2]]=[s.F[0],s.F[1],s.F[2]];
+                   [s.F[0],s.F[1],s.F[2]]=[s.L[0],s.L[1],s.L[2]];
+                   [s.L[0],s.L[1],s.L[2]]=tmp; break;
+          case'D': tmp=[s.F[6],s.F[7],s.F[8]]; [s.F[6],s.F[7],s.F[8]]=[s.R[6],s.R[7],s.R[8]];
+                   [s.R[6],s.R[7],s.R[8]]=[s.B[6],s.B[7],s.B[8]];
+                   [s.B[6],s.B[7],s.B[8]]=[s.L[6],s.L[7],s.L[8]];
+                   [s.L[6],s.L[7],s.L[8]]=tmp; break;
+          case'R': tmp=[s.U[2],s.U[5],s.U[8]]; [s.U[2],s.U[5],s.U[8]]=[s.F[2],s.F[5],s.F[8]];
+                   [s.F[2],s.F[5],s.F[8]]=[s.D[2],s.D[5],s.D[8]];
+                   [s.D[2],s.D[5],s.D[8]]=[s.B[6],s.B[3],s.B[0]];
+                   [s.B[6],s.B[3],s.B[0]]=tmp; break;
+          case'L': tmp=[s.U[0],s.U[3],s.U[6]]; [s.U[0],s.U[3],s.U[6]]=[s.B[8],s.B[5],s.B[2]];
+                   [s.B[8],s.B[5],s.B[2]]=[s.D[0],s.D[3],s.D[6]];
+                   [s.D[0],s.D[3],s.D[6]]=[s.F[0],s.F[3],s.F[6]];
+                   [s.F[0],s.F[3],s.F[6]]=tmp; break;
+          case'F': tmp=[s.U[6],s.U[7],s.U[8]]; [s.U[6],s.U[7],s.U[8]]=[s.L[8],s.L[5],s.L[2]];
+                   [s.L[8],s.L[5],s.L[2]]=[s.D[2],s.D[1],s.D[0]];
+                   [s.D[2],s.D[1],s.D[0]]=[s.R[0],s.R[3],s.R[6]];
+                   [s.R[0],s.R[3],s.R[6]]=tmp; break;
+          case'B': tmp=[s.U[0],s.U[1],s.U[2]]; [s.U[0],s.U[1],s.U[2]]=[s.R[2],s.R[5],s.R[8]];
+                   [s.R[2],s.R[5],s.R[8]]=[s.D[8],s.D[7],s.D[6]];
+                   [s.D[8],s.D[7],s.D[6]]=[s.L[6],s.L[3],s.L[0]];
+                   [s.L[6],s.L[3],s.L[0]]=tmp; break;
+        }
+      }
+    }
+
+    // Utility
+    function generateScramble(n=20){const f=['U','R','F','D','L','B'],s=['',"'","2"],a=[];let p=null;for(let i=0;i<n;i++){let x;do{x=f[Math.floor(Math.random()*f.length)]}while(x===p);p=x;a.push(x+s[Math.floor(Math.random()*s.length)])}return a;}
+    function getCubeSvg(cs,size=50){const m={r:'#c62828',g:'#2e7d32',b:'#1565c0',y:'#fdd835',o:'#ef6c00',w:'#fafafa'};const f={U:cs.slice(0,9),R:cs.slice(9,18),F:cs.slice(18,27),D:cs.slice(27,36),L:cs.slice(36,45),B:cs.slice(45,54)};const pos={U:[1,0],L:[0,1],F:[1,1],R:[2,1],B:[3,1],D:[1,2]};const pad=4,s=size;let svg=`<svg xmlns='http://www.w3.org/2000/svg' width='${4*s+pad*6}' height='${3*s+pad*5}'>`;svg+=`<rect width='100%' height='100%' fill='white'/>`;for(const k of ['U','L','F','R','B','D']){const[ox,oy]=pos[k].map((v,i)=>pad+v*(s+pad));const st=f[k];for(let i=0;i<9;i++){const x=ox+(i%3)*(s/3),y=oy+Math.floor(i/3)*(s/3),c=m[st[i]]||'#999';svg+=`<rect x='${x}' y='${y}' width='${s/3-2}' height='${s/3-2}' fill='${c}' stroke='#222'/>`}}return svg+`</svg>`}
+
+    // --- UI ---
+    const cube=new Cube();const svgWrap=document.getElementById("svgWrap");const log=document.getElementById("stepsLog");
+    function render(msg=""){svgWrap.innerHTML=getCubeSvg(cube.toColorString(),100);if(msg)log.textContent+=msg+"\n";}
+    function scramble(){const seq=generateScramble(15);seq.forEach(m=>cube.applyMove(m));log.textContent="Scramble: "+seq.join(" ")+"\n";render();}
+    function reset(){const s=new Cube();for(const k in s.faces) cube.faces[k]=s.faces[k].slice();log.textContent="Reset\n";render();}
+    async function beginnerSolve(){const phases=[{n:"White Cross",m:["F","R","U","R'","U'"]},{n:"F2L",m:["U","R","U'","R'","U'","F'","U","F"]},{n:"OLL",m:["F","R","U","R'","U'","F'"]},{n:"PLL",m:["R2","U","R","U","R'","U'","R'","U'","R'","U","R'"]}];for(const p of phases){log.textContent+="\n"+p.n+": ";for(const mv of p.m){cube.applyMove(mv);log.textContent+=mv+" ";render("Applied "+mv);await new Promise(r=>setTimeout(r,300));}log.textContent+="\n";}log.textContent+="\n(Not actually solved, demo sequence only)\n";}
+    render("Ready");
+  </script>
+</body>
+</html>

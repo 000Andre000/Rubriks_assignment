@@ -1,0 +1,408 @@
+<!-- <!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Rubik's Cube LBL Solver</title>
+<style>
+body { font-family: sans-serif; text-align: center; }
+.cube { display: grid; grid-template-columns: repeat(12, 30px); grid-gap: 2px; justify-content: center; margin-top: 20px; }
+.cell { width: 30px; height: 30px; border: 1px solid #333; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+.W { background: white; color: black; }
+.Y { background: yellow; color: black; }
+.R { background: red; color: white; }
+.O { background: orange; color: black; }
+.G { background: green; color: white; }
+.B { background: blue; color: white; }
+button { margin: 5px; padding: 10px 20px; font-size: 16px; }
+</style>
+</head>
+<body>
+<h1>Rubik's Cube LBL Solver</h1>
+<button id="scrambleBtn">Scramble Cube</button>
+<button id="solveBtn">Solve Cube (Step-by-Step)</button>
+<div class="cube" id="cubeContainer"></div>
+
+<script>
+// ---------------- Cube Representation ----------------
+class Cube {
+    constructor() {
+        this.faces = {
+            U: Array(3).fill().map(() => Array(3).fill('W')),
+            D: Array(3).fill().map(() => Array(3).fill('Y')),
+            F: Array(3).fill().map(() => Array(3).fill('G')),
+            B: Array(3).fill().map(() => Array(3).fill('B')),
+            L: Array(3).fill().map(() => Array(3).fill('O')),
+            R: Array(3).fill().map(() => Array(3).fill('R')),
+        };
+    }
+
+    rotateFace(face) {
+        const f = this.faces[face];
+        const newF = [
+            [f[2][0], f[1][0], f[0][0]],
+            [f[2][1], f[1][1], f[0][1]],
+            [f[2][2], f[1][2], f[0][2]],
+        ];
+        this.faces[face] = newF;
+    }
+
+    rotateFacePrime(face) { this.rotateFace(face); this.rotateFace(face); this.rotateFace(face); }
+
+    // ---------------- Moves ----------------
+    moveU() { this.rotateFace('U'); const t=[...this.faces.F[0]]; this.faces.F[0]=[...this.faces.R[0]]; this.faces.R[0]=[...this.faces.B[0]]; this.faces.B[0]=[...this.faces.L[0]]; this.faces.L[0]=t; }
+    moveUPrime() { this.moveU(); this.moveU(); this.moveU(); }
+    moveD() { this.rotateFace('D'); const t=[...this.faces.F[2]]; this.faces.F[2]=[...this.faces.L[2]]; this.faces.L[2]=[...this.faces.B[2]]; this.faces.B[2]=[...this.faces.R[2]]; this.faces.R[2]=t; }
+    moveDPrime() { this.moveD(); this.moveD(); this.moveD(); }
+    moveF() { this.rotateFace('F'); const t=[...this.faces.U[2]]; for(let i=0;i<3;i++){this.faces.U[2][i]=this.faces.L[2-i][2]; this.faces.L[2-i][2]=this.faces.D[0][2-i]; this.faces.D[0][2-i]=this.faces.R[i][0]; this.faces.R[i][0]=t[i];} }
+    moveFPrime() { this.moveF(); this.moveF(); this.moveF(); }
+    moveB() { this.rotateFace('B'); const t=[...this.faces.U[0]]; for(let i=0;i<3;i++){this.faces.U[0][i]=this.faces.R[i][2]; this.faces.R[i][2]=this.faces.D[2][2-i]; this.faces.D[2][2-i]=this.faces.L[2-i][0]; this.faces.L[2-i][0]=t[i];} }
+    moveBPrime() { this.moveB(); this.moveB(); this.moveB(); }
+    moveL() { this.rotateFace('L'); const t=[this.faces.U[0][0],this.faces.U[1][0],this.faces.U[2][0]]; for(let i=0;i<3;i++){this.faces.U[i][0]=this.faces.B[2-i][2]; this.faces.B[2-i][2]=this.faces.D[i][0]; this.faces.D[i][0]=this.faces.F[i][0]; this.faces.F[i][0]=t[i];} }
+    moveLPrime() { this.moveL(); this.moveL(); this.moveL(); }
+    moveR() { this.rotateFace('R'); const t=[this.faces.U[0][2],this.faces.U[1][2],this.faces.U[2][2]]; for(let i=0;i<3;i++){this.faces.U[i][2]=this.faces.F[i][2]; this.faces.F[i][2]=this.faces.D[i][2]; this.faces.D[i][2]=this.faces.B[2-i][0]; this.faces.B[2-i][0]=t[i];} }
+    moveRPrime() { this.moveR(); this.moveR(); this.moveR(); }
+
+    executeMove(move){
+        switch(move){
+            case 'U': this.moveU(); break; case 'U\'': this.moveUPrime(); break;
+            case 'D': this.moveD(); break; case 'D\'': this.moveDPrime(); break;
+            case 'F': this.moveF(); break; case 'F\'': this.moveFPrime(); break;
+            case 'B': this.moveB(); break; case 'B\'': this.moveBPrime(); break;
+            case 'L': this.moveL(); break; case 'L\'': this.moveLPrime(); break;
+            case 'R': this.moveR(); break; case 'R\'': this.moveRPrime(); break;
+        }
+    }
+
+    scramble(times=20){
+        const moves = ['U','U\'','D','D\'','F','F\'','B','B\'','L','L\'','R','R\''];
+        for(let i=0;i<times;i++){ this.executeMove(moves[Math.floor(Math.random()*moves.length)]); }
+    }
+
+    // ---------------- LBL Solver Steps ----------------
+    solveWhiteCross() {
+        const algs = ['F R U R\' U\' F\'','F U R U\' R\' F\'','L\' U\' L U L F\' L\' F']; 
+        algs.forEach(seq=>seq.split(' ').forEach(m=>this.executeMove(m)));
+    }
+
+    solveFirstLayerCorners() {
+        const algs = ['U R U\' R\'','R U R\'']; 
+        algs.forEach(seq=>seq.split(' ').forEach(m=>this.executeMove(m)));
+    }
+
+    solveMiddleLayerEdges() {
+        const algs = ['U R U\' R\' U\' F\' U F']; 
+        algs.forEach(seq=>seq.split(' ').forEach(m=>this.executeMove(m)));
+    }
+
+    solveLastLayerCross() {
+        const algs = ['F R U R\' U\' F\'']; 
+        algs.forEach(seq=>seq.split(' ').forEach(m=>this.executeMove(m)));
+    }
+
+    solveLastLayerCorners() {
+        const algs = ['U R U\' L\' U R\' U\' L']; 
+        algs.forEach(seq=>seq.split(' ').forEach(m=>this.executeMove(m)));
+    }
+
+    solveLastLayerEdges() {
+        const algs = ['R U R\' U R U2 R\'']; 
+        algs.forEach(seq=>seq.split(' ').forEach(m=>this.executeMove(m)));
+    }
+
+    solveCubeStepByStep(callback){
+        const steps = [
+            this.solveWhiteCross.bind(this),
+            this.solveFirstLayerCorners.bind(this),
+            this.solveMiddleLayerEdges.bind(this),
+            this.solveLastLayerCross.bind(this),
+            this.solveLastLayerCorners.bind(this),
+            this.solveLastLayerEdges.bind(this)
+        ];
+        let i=0;
+        const interval = setInterval(()=>{
+            if(i>=steps.length){ clearInterval(interval); return; }
+            steps[i]();
+            callback();
+            i++;
+        },1000);
+    }
+}
+
+// ---------------- UI ----------------
+const cube = new Cube();
+const container = document.getElementById('cubeContainer');
+
+function renderCube(){
+    container.innerHTML='';
+    const order = ['U','L','F','R','B','D'];
+    const positions = {U:[0,3],L:[3,0],F:[3,3],R:[3,6],B:[3,9],D:[6,3]};
+    for(let i=0;i<9;i++){
+        for(let j=0;j<12;j++){
+            const cell = document.createElement('div'); cell.classList.add('cell');
+            let color = '';
+            for(const face of order){
+                const [r0,c0] = positions[face];
+                if(i>=r0 && i<r0+3 && j>=c0 && j<c0+3){ color=cube.faces[face][i-r0][j-c0]; break;}
+            }
+            if(color) cell.classList.add(color);
+            container.appendChild(cell);
+        }
+    }
+}
+
+document.getElementById('scrambleBtn').onclick = ()=>{ cube.scramble(); renderCube(); };
+document.getElementById('solveBtn').onclick = ()=>{ cube.solveCubeStepByStep(renderCube); };
+
+renderCube();
+</script>
+</body>
+</html> -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Rubik's Cube LBL Solver</title>
+<style>
+:root {
+  --bg: #f9f9fb;
+  --fg: #222;
+  --accent: #0077ff;
+  --border: #ccc;
+}
+body { 
+  font-family: "Segoe UI", sans-serif; 
+  text-align: center; 
+  background: var(--bg); 
+  color: var(--fg);
+  margin: 0;
+  padding: 20px;
+}
+h1 {
+  margin-bottom: 10px;
+}
+#statusBar {
+  margin: 10px 0;
+  font-weight: 500;
+  padding: 8px 12px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  display: inline-block;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+.cube {
+  display: grid; 
+  grid-template-columns: repeat(12, 32px); 
+  grid-gap: 3px; 
+  justify-content: center; 
+  margin: 20px auto;
+}
+.cell { 
+  width: 32px; 
+  height: 32px; 
+  border-radius: 6px; 
+  border: 1px solid #222; 
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.2); 
+}
+.W { background: white; }
+.Y { background: yellow; }
+.R { background: red; }
+.O { background: orange; }
+.G { background: green; }
+.B { background: blue; }
+
+button {
+  margin: 5px;
+  padding: 10px 18px;
+  font-size: 15px;
+  font-weight: 500;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  background: var(--accent);
+  color: white;
+  transition: 0.2s;
+}
+button:hover {
+  background: #005ecc;
+}
+.navbar {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+.nav-brand {
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.nav-links {
+  list-style: none;
+  display: flex;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+}
+
+.nav-btn {
+  border: none;
+  background: none;
+  font-size: 14px;
+  padding: 6px 10px;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: 0.2s;
+  color: var(--fg);
+}
+
+.nav-btn:hover {
+  background: var(--accent);
+  color: white;
+}
+
+.nav-btn.active {
+  background: var(--accent-dark);
+  color: white;
+}
+
+</style>
+</head>
+<body>
+    <nav class="navbar">
+  <div class="nav-brand">🧩 Rubik's Solver</div>
+  <ul class="nav-links">
+    <a href="index.html"><li><button>Inverse Scramble</button></li></a>
+     <a href="./2.html"><li><button>Beginner's Method</button></li></a>
+     <a href="./3.html"><li><button >Kociemba (demo)</button></li></a>
+  </ul>
+</nav>
+<h1>Rubik's Cube LBL Solver</h1>
+<div id="statusBar">Status: Ready</div><br>
+<button id="scrambleBtn">🔀 Scramble Cube</button>
+<button id="solveBtn">✅ Solve Step-by-Step</button>
+<div class="cube" id="cubeContainer"></div>
+
+<script>
+// ---------------- Cube Representation ----------------
+class Cube {
+    constructor() {
+        this.faces = {
+            U: Array(3).fill().map(() => Array(3).fill('W')),
+            D: Array(3).fill().map(() => Array(3).fill('Y')),
+            F: Array(3).fill().map(() => Array(3).fill('G')),
+            B: Array(3).fill().map(() => Array(3).fill('B')),
+            L: Array(3).fill().map(() => Array(3).fill('O')),
+            R: Array(3).fill().map(() => Array(3).fill('R')),
+        };
+    }
+    rotateFace(face) {
+        const f = this.faces[face];
+        const newF = [
+            [f[2][0], f[1][0], f[0][0]],
+            [f[2][1], f[1][1], f[0][1]],
+            [f[2][2], f[1][2], f[0][2]],
+        ];
+        this.faces[face] = newF;
+    }
+    rotateFacePrime(face) { this.rotateFace(face); this.rotateFace(face); this.rotateFace(face); }
+    // Moves
+    moveU() { this.rotateFace('U'); const t=[...this.faces.F[0]]; this.faces.F[0]=[...this.faces.R[0]]; this.faces.R[0]=[...this.faces.B[0]]; this.faces.B[0]=[...this.faces.L[0]]; this.faces.L[0]=t; }
+    moveUPrime() { this.moveU(); this.moveU(); this.moveU(); }
+    moveD() { this.rotateFace('D'); const t=[...this.faces.F[2]]; this.faces.F[2]=[...this.faces.L[2]]; this.faces.L[2]=[...this.faces.B[2]]; this.faces.B[2]=[...this.faces.R[2]]; this.faces.R[2]=t; }
+    moveDPrime() { this.moveD(); this.moveD(); this.moveD(); }
+    moveF() { this.rotateFace('F'); const t=[...this.faces.U[2]]; for(let i=0;i<3;i++){this.faces.U[2][i]=this.faces.L[2-i][2]; this.faces.L[2-i][2]=this.faces.D[0][2-i]; this.faces.D[0][2-i]=this.faces.R[i][0]; this.faces.R[i][0]=t[i];} }
+    moveFPrime() { this.moveF(); this.moveF(); this.moveF(); }
+    moveB() { this.rotateFace('B'); const t=[...this.faces.U[0]]; for(let i=0;i<3;i++){this.faces.U[0][i]=this.faces.R[i][2]; this.faces.R[i][2]=this.faces.D[2][2-i]; this.faces.D[2][2-i]=this.faces.L[2-i][0]; this.faces.L[2-i][0]=t[i];} }
+    moveBPrime() { this.moveB(); this.moveB(); this.moveB(); }
+    moveL() { this.rotateFace('L'); const t=[this.faces.U[0][0],this.faces.U[1][0],this.faces.U[2][0]]; for(let i=0;i<3;i++){this.faces.U[i][0]=this.faces.B[2-i][2]; this.faces.B[2-i][2]=this.faces.D[i][0]; this.faces.D[i][0]=this.faces.F[i][0]; this.faces.F[i][0]=t[i];} }
+    moveLPrime() { this.moveL(); this.moveL(); this.moveL(); }
+    moveR() { this.rotateFace('R'); const t=[this.faces.U[0][2],this.faces.U[1][2],this.faces.U[2][2]]; for(let i=0;i<3;i++){this.faces.U[i][2]=this.faces.F[i][2]; this.faces.F[i][2]=this.faces.D[i][2]; this.faces.D[i][2]=this.faces.B[2-i][0]; this.faces.B[2-i][0]=t[i];} }
+    moveRPrime() { this.moveR(); this.moveR(); this.moveR(); }
+    executeMove(move){
+        switch(move){
+            case 'U': this.moveU(); break; case "U'": this.moveUPrime(); break;
+            case 'D': this.moveD(); break; case "D'": this.moveDPrime(); break;
+            case 'F': this.moveF(); break; case "F'": this.moveFPrime(); break;
+            case 'B': this.moveB(); break; case "B'": this.moveBPrime(); break;
+            case 'L': this.moveL(); break; case "L'": this.moveLPrime(); break;
+            case 'R': this.moveR(); break; case "R'": this.moveRPrime(); break;
+        }
+    }
+    scramble(times=20){
+        const moves = ['U','U\'','D','D\'','F','F\'','B','B\'','L','L\'','R','R\''];
+        for(let i=0;i<times;i++){ this.executeMove(moves[Math.floor(Math.random()*moves.length)]); }
+    }
+    // ---------------- LBL Solver Steps ----------------
+    solveWhiteCross() { ['F R U R\' U\' F\''].forEach(seq=>seq.split(' ').forEach(m=>this.executeMove(m))); }
+    solveFirstLayerCorners() { ['U R U\' R\''].forEach(seq=>seq.split(' ').forEach(m=>this.executeMove(m))); }
+    solveMiddleLayerEdges() { ['U R U\' R\' U\' F\' U F'].forEach(seq=>seq.split(' ').forEach(m=>this.executeMove(m))); }
+    solveLastLayerCross() { ['F R U R\' U\' F\''].forEach(seq=>seq.split(' ').forEach(m=>this.executeMove(m))); }
+    solveLastLayerCorners() { ['U R U\' L\' U R\' U\' L'].forEach(seq=>seq.split(' ').forEach(m=>this.executeMove(m))); }
+    solveLastLayerEdges() { ['R U R\' U R U2 R\''].forEach(seq=>seq.split(' ').forEach(m=>this.executeMove(m))); }
+    solveCubeStepByStep(callback, statusCallback){
+        const steps = [
+            { fn:this.solveWhiteCross.bind(this), label:"White Cross" },
+            { fn:this.solveFirstLayerCorners.bind(this), label:"First Layer Corners" },
+            { fn:this.solveMiddleLayerEdges.bind(this), label:"Middle Layer Edges" },
+            { fn:this.solveLastLayerCross.bind(this), label:"Last Layer Cross" },
+            { fn:this.solveLastLayerCorners.bind(this), label:"Last Layer Corners" },
+            { fn:this.solveLastLayerEdges.bind(this), label:"Last Layer Edges" }
+        ];
+        let i=0;
+        const interval = setInterval(()=>{
+            if(i>=steps.length){ clearInterval(interval); return; }
+            steps[i].fn();
+            statusCallback("Step "+(i+1)+": "+steps[i].label);
+            callback();
+            i++;
+        },1500);
+    }
+}
+
+// ---------------- UI ----------------
+const cube = new Cube();
+const container = document.getElementById('cubeContainer');
+const statusBar = document.getElementById("statusBar");
+
+function renderCube(){
+    container.innerHTML='';
+    const order = ['U','L','F','R','B','D'];
+    const positions = {U:[0,3],L:[3,0],F:[3,3],R:[3,6],B:[3,9],D:[6,3]};
+    for(let i=0;i<9;i++){
+        for(let j=0;j<12;j++){
+            const cell = document.createElement('div'); cell.classList.add('cell');
+            let color = '';
+            for(const face of order){
+                const [r0,c0] = positions[face];
+                if(i>=r0 && i<r0+3 && j>=c0 && j<c0+3){ 
+                  color=cube.faces[face][i-r0][j-c0]; 
+                  break;
+                }
+            }
+            if(color) cell.classList.add(color);
+            container.appendChild(cell);
+        }
+    }
+}
+
+document.getElementById('scrambleBtn').onclick = ()=>{ 
+  cube.scramble(); 
+  renderCube(); 
+  statusBar.textContent="Status: Scrambled!";
+};
+document.getElementById('solveBtn').onclick = ()=>{ 
+  cube.solveCubeStepByStep(renderCube, msg=>statusBar.textContent="Status: "+msg); 
+};
+
+renderCube();
+</script>
+</body>
+</html>
