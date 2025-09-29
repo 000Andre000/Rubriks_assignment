@@ -63,21 +63,20 @@
     }
 
     button {
-      margin: 6px;
-      padding: 10px 16px;
-      font-size: 15px;
-      border: none;
-      border-radius: 8px;
-      background: var(--accent);
-      color: #fff;
+      padding: 8px 14px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--fg);
       cursor: pointer;
-      transition: background 0.2s ease, transform 0.1s ease;
+      font-size: 14px;
+      transition: all 0.2s ease;
     }
-
     button:hover {
-      background: var(--accent-dark);
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent-dark);
     }
-
     button:active {
       transform: scale(0.96);
     }
